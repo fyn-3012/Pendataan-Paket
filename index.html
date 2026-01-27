@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sistem Paket (Supabase Connected)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="loginScreen" class="container login-box">
+        <h2 class="login-title">📦 Admin Paket</h2>
+        
+        <div id="loginStatus" class="login-status">
+            <span>Memeriksa server...</span>
+            <button class="btn-retry" onclick="checkConnection()" title="Coba Hubungkan Ulang">🔄</button>
+        </div>
+
+        <div class="card" style="text-align:left;">
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Masukkan Username...">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="">
+            </div>
+            <button class="btn btn-primary" style="width:100%; margin-bottom:10px;" onclick="handleLogin()">Masuk Dashboard</button>
+            <button class="btn btn-secondary" style="width:100%;" onclick="showGuest()">Cek Paket (Tamu)</button>
+        </div>
+    </div>
+
+    <div id="appScreen" class="hidden">
+        <div class="header">
+            <h2>📦 Dashboard <span id="displayUser" class="user-display"></span></h2>
+            <div class="status-wrapper">
+                <div id="connectionStatus">🔴 Offline</div>
+                <button class="btn-retry" onclick="checkConnection()" title="Refresh Koneksi">🔄</button>
+                <button class="btn btn-danger btn-logout" onclick="handleLogout()">Keluar</button>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="nav-tabs">
+                <button class="nav-btn active" onclick="switchTab('input')">📝 Input Paket</button>
+                <button class="nav-btn" onclick="switchTab('data')">🗂️ Data Paket</button>
+                <button class="nav-btn" onclick="switchTab('log')">📜 Log Aktivitas</button>
+            </div>
+
+            <div id="tabInput">
+                <br>
+                <div class="grid-2-col">
+                    <div class="card">
+                        <h3 style="margin-top:0;">Input Paket Baru</h3>
+                        <div class="form-group">
+                            <label>Kode Resi / Paket</label>
+                            <div class="input-group">
+                                <input type="text" id="inpKode" placeholder="Contoh: PKT-001">
+                                <button class="btn btn-secondary" onclick="autoKode()">⚡</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Nama Penerima</label>
+                            <input type="text" id="inpNama">
+                        </div>
+                        <div class="form-group grid-2-col-gap">
+                            <div>
+                                <label>Tanggal</label>
+                                <input type="date" id="inpTanggal">
+                            </div>
+                            <div>
+                                <label>Jenis</label>
+                                <input type="text" id="inpJenis" placeholder="Dokumen/Barang">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Kurir</label>
+                            <input type="text" id="inpKurir" placeholder="JNE/J&T/Shopee">
+                        </div>
+                        <div class="form-group">
+                            <label>Status Awal</label>
+                            <select id="inpStatus">
+                                <option value="Belum Diambil">Belum Diambil</option>
+                                <option value="Sudah Diambil">Sudah Diambil</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-primary" style="width:100%;" onclick="simpanKeSupabase()">💾 Simpan ke Database</button>
+                    </div>
+
+                    <div class="card">
+                        <h3 style="margin-top:0;">Ringkasan Data</h3>
+                        <div class="stats-grid">
+                            <div class="stat-box-blue">
+                                <h1 id="statTotal" class="stat-number-primary">0</h1>
+                                <small>Total Paket</small>
+                            </div>
+                            <div class="stat-box-red">
+                                <h1 id="statBelum" class="stat-number-danger">0</h1>
+                                <small>Belum Diambil</small>
+                            </div>
+                        </div>
+                        <div style="margin-top:20px;">
+                            <h4>Baru Ditambahkan:</h4>
+                            <ul id="recentList" class="recent-list">
+                                <li>Belum ada data...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tabData" class="hidden">
+                <br>
+                <div class="card">
+                    <div class="search-bar-wrapper">
+                        <input type="text" id="searchBox" placeholder="Cari nama atau kode..." oninput="renderTable()" style="max-width:300px;">
+                        <button class="btn btn-secondary" onclick="fetchData()">🔄 Refresh Data</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table id="mainTable">
+                            <thead>
+                                <tr>
+                                    <th>Kode</th>
+                                    <th>Penerima</th>
+                                    <th>Tanggal</th>
+                                    <th>Kurir</th>
+                                    <th>Status (Klik Ubah)</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tabLog" class="hidden">
+                <br>
+                <div class="card">
+                    <div class="log-header">
+                        <h3 style="margin:0;">Riwayat Aktivitas (Server Cloud)</h3>
+                        <button class="btn btn-danger" style="padding:5px 10px; font-size:12px;" onclick="clearLogs()">🗑️ Bersihkan Server Log</button>
+                    </div>
+                    <div class="log-container">
+                        <div id="logListEmpty" class="log-empty">Sedang memuat data log...</div>
+                        <div id="logListContainer">
+                            </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="guestScreen" class="hidden container">
+        <button class="btn btn-secondary" onclick="location.reload()" style="margin-bottom:20px;">← Kembali Login</button>
+        <div class="card" style="text-align:center;">
+            <h2>🔍 Cek Paket Anda</h2>
+            <p class="guest-desc">Ketik nama untuk mencari, atau kosongkan untuk melihat semua paket yang belum diambil.</p>
+            
+            <input type="text" id="guestSearch" placeholder="Masukkan Nama atau Kode Resi..." class="guest-input" oninput="guestRender()">
+            
+            <div class="table-responsive">
+                <table id="guestTable">
+                    <thead><tr><th>Kode</th><th>Penerima</th><th>Status</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
